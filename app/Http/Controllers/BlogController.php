@@ -3,88 +3,67 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\blogRequest;
+use App\Http\Resources\BlogResource;
 use App\Models\Blog;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Repositories\BlogRepository;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 class BlogController extends Controller
 {
+    protected BlogRepository $blogRepository;
+    public function __construct(BlogRepository $blogRepository) {
+        $this->blogRepository = $blogRepository;
+    }
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request)
+    public function index()
     {
-        $categories = Category::all();
-        $blogs = Blog::query()->with('category')->when($request->get('category') != null,
-            fn ($query) => $query->where('category_id', $request->get('category'))
-        )->get();
-        return view('blogs/index', compact('blogs', 'categories'));
+        $blogs = $this->blogRepository->all();
+        return BlogResource::collection($blogs);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        $categories = Category::query()->get();
-        return view('blogs/create', compact('categories'));
-    }
 
     /**
      * Store a newly created resource in storage.
      */
     public function store(blogRequest $request)
     {
-        // Retrieve validated data
         $data = $request->validated();
-
-        // Generate slug
-        $data['slug'] = Str::slug($data['title']);
-
-        // Create a new category
-        Blog::query()->create($data);
-
-        // Redirect to the categories index page
-        return redirect()->route('blogs.index');
+        $blog = $this->blogRepository->create($data);
+        return BlogResource::make($blog);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Blog $blog)
+    public function show(string $id)
     {
-        $blog->load('category');
-        return view('blogs/show', compact('blog'));
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Blog $blog)
-    {
-        $categories = Category::query()->get();
-
-        return view('blogs/edit', compact('blog', 'categories'));
+        $blog= $this->blogRepository->find($id);
+        return BlogResource::make($blog);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(blogRequest $request, Blog $blog)
+    public function update(blogRequest $request, string $id)
     {
-        $blog['slug'] = Str::slug($blog['title']);
-        $blog->update($request->validated());
-        return redirect()->route('blogs.index');
+        $data= $request->validated();
+        $blog = $this->blogRepository->find($id);
+        $blog = $this->blogRepository->update($blog, $data);
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Blog $blog)
+    public function destroy($id): JsonResponse
     {
-        $blog->loadMissing('category');
-        return view('blogs/delete', compact('blog'));
+        $blog = $this->blogRepository->find($id);
+        $this->blogRepository->delete($blog);
+        return response()->json(null, 204);
     }
 }

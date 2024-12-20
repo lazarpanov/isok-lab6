@@ -13,6 +13,14 @@
     </div>
 
     <div>
+        <label for="description">Description:</label>
+        <input type="text" name="description" id="description" value="{{ old('description', $blog->description) }}">
+        @error('invoice_number')
+        <div style="color: red;">{{ $message }}</div>
+        @enderror
+    </div>
+
+    <div>
         <label for="category_id">Category:</label>
         <select name="category_id" id="category_id">
             @foreach ($categories as $category)
